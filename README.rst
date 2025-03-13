@@ -28,6 +28,11 @@ Features
 
 * TODO
 
+
+TASKS
+--------
+- [] remove the need fotr the raw_wsi_path.csv
+
 Credits
 -------
 

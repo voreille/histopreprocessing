@@ -32,3 +32,7 @@ def configure_logging(log_file=None):
         logger.addHandler(file_handler)
 
     logger.info("Logging initialized.")
+
+
+def get_raw_files_from_masks(raw_data_dir, masks_path):
+    pass

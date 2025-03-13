@@ -6,23 +6,12 @@ import pandas as pd
 from tqdm import tqdm
 from dotenv import load_dotenv
 
-from histolung.data.wsi_tiler import WSITilerWithMask
+from .wsi_tiler import WSITilerWithMask
 
 load_dotenv()
 
 DEBUG = False
 project_dir = Path(__file__).parents[2].resolve()
-
-# config = load_yaml_with_env(project_dir /
-#                             "histolung/config/datasets_config.yaml")
-
-# output_basedir = project_dir / ("data/interim/debug_tiles"
-#                                 if DEBUG else config["tiles_basedir"])
-# output_basedir.mkdir(exist_ok=True)
-
-# Configure logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 def process_wsi(
@@ -37,7 +26,7 @@ def process_wsi(
     save_tile_overlay=False,
     save_metadata=True,
 ):
-    logger.info(f"Starting tiling for WSI {wsi_path.name}")
+    logging.info(f"Starting tiling for WSI {wsi_path.name}")
     try:
         tile_processor = WSITilerWithMask(
             wsi_path,
@@ -65,10 +54,10 @@ def process_wsi(
             raise RuntimeError(
                 f"Error encountered in tile processing for {wsi_path.name}")
 
-        logger.info(f"Tiling completed for WSI {wsi_path.name}")
+        logging.info(f"Tiling completed for WSI {wsi_path.name}")
 
     except Exception as e:
-        logger.error(f"Error processing WSI {wsi_path.name}: {e}")
+        logging.error(f"Error processing WSI {wsi_path.name}: {e}")
         return False
 
     if save_tile_overlay:
@@ -78,7 +67,7 @@ def process_wsi(
     return True
 
 
-def tile_dataset(
+def tile_wsi_task(
     masks_dir,
     output_dir,
     tile_size=224,
@@ -89,6 +78,8 @@ def tile_dataset(
     save_masks=False,
     magnification=10,
 ):
+    masks_dir = Path(masks_dir)
+    output_dir = Path(output_dir)
 
     mask_files = [f for f in masks_dir.rglob("*mask_use.png")]
     df = pd.read_csv(Path(masks_dir) / "raw_wsi_path.csv")
@@ -120,22 +111,4 @@ def tile_dataset(
 
     for wsi_path, result in zip(wsi_paths_mapping.values(), results):
         if not result:
-            logger.warning(f"Processing failed for WSI {wsi_path.name}")
-
-
-if __name__ == "__main__":
-    masks_dir = Path(
-        "/home/valentin/workspaces/histolung/data/interim/debug_masks/tcga_lusc/output"
-    )
-    output_dir = Path(
-        "/home/valentin/workspaces/histolung/data/test_histoqc/test_tiling")
-    tile_dataset(
-        masks_dir,
-        output_dir=output_dir,
-        tile_size=224,
-        threshold=0.8,
-        num_workers_wsi=4,
-        num_workers_tiles=12,
-        magnification=20,
-        save_tile_overlay=True,
-    )
+            logging.warning(f"Processing failed for WSI {wsi_path.name}")

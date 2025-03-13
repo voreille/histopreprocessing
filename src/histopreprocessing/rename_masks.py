@@ -1,12 +1,25 @@
 import logging
 from pathlib import Path, PurePath
 import shutil
+import tempfile
 
 import pandas as pd
+
+from histopreprocessing.wsi_id_mapping import WSI_ID_MAPPING_DICT
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def rename_masks_task(input_dir, wsi_id_mapping_style):
+    """Rename mask folders according to dataset conventions"""
+
+    input_dir = Path(input_dir)
+    filename_to_wsi_id_mapping = WSI_ID_MAPPING_DICT[wsi_id_mapping_style]
+
+    logger.info(f"Renaming HistQC output in: {input_dir}")
+    rename_masks_with_copy(input_dir, filename_to_wsi_id_mapping)
 
 
 # Define dataset-specific renaming functions
@@ -64,7 +77,7 @@ def rename_files_in_folder(folder, renaming_function):
         logger.info(f"Renamed file: {file} -> {new_path}")
 
 
-def rename_masks_with_copy(masks_dir, dataset_name):
+def rename_masks_with_copy(masks_dir, renaming_function):
     """
     Copies and renames mask directories and files safely.
 
@@ -72,33 +85,22 @@ def rename_masks_with_copy(masks_dir, dataset_name):
         masks_dir (Path): Base directory containing masks for the dataset.
         dataset_name (str): Name of the dataset (e.g., "tcga_luad").
     """
-    # Get the renaming function based on the dataset
-    renaming_function = RENAMING_RULES.get(dataset_name)
-
-    # If no renaming function is defined, skip this dataset
-    if not renaming_function:
-        logger.warning(
-            f"No renaming rule for dataset {dataset_name}. Skipping.")
-        raise ValueError(
-            f"No renaming rule for dataset {dataset_name}. Skipping.")
 
     # Define paths
-    masks_out_dir = masks_dir / "output"
-    masks_temp_dir = masks_dir / "masks_temp"
-    masks_final_dir = masks_dir / "masks"
+    masks_temp_dir = Path(tempfile.mkdtemp())
 
     # Create a temporary directory for renamed files
     masks_temp_dir.mkdir(parents=False, exist_ok=True)
 
     # Copy metadata files (error.log, results.tsv)
-    for filename in ["error.log", "results.tsv"]:
-        file_path = masks_out_dir / filename
+    for filename in ["error.log", "results.tsv", "raw_wsi_path.csv"]:
+        file_path = masks_dir / filename
         if file_path.exists():
-            shutil.copy(file_path, masks_dir / filename)
-            logger.info(f"Copied {filename} to {masks_dir / filename}")
+            shutil.copy(file_path, masks_temp_dir / filename)
+            logger.info(f"Copied {filename} to {masks_temp_dir / filename}")
 
     # Rename and copy WSI folders into the temporary directory
-    wsi_folders = [f for f in masks_out_dir.iterdir() if f.is_dir()]
+    wsi_folders = [f for f in masks_dir.iterdir() if f.is_dir()]
 
     for folder in wsi_folders:
         new_folder_name = renaming_function(folder.name)
@@ -114,32 +116,27 @@ def rename_masks_with_copy(masks_dir, dataset_name):
                 f"Skipping {folder} as {new_folder_path} already exists.")
 
     # Validation step
-    original_count = sum(1 for _ in masks_out_dir.rglob("*"))
+    original_count = sum(1 for _ in masks_dir.rglob("*"))
     copied_count = sum(1 for _ in masks_temp_dir.rglob("*"))
 
-    # Adjust the copied count to include the moved files (error.log, results.tsv)
-    adjusted_copied_count = copied_count + 2
-
-    if original_count == adjusted_copied_count:
+    if original_count == copied_count:
         logger.info(f"Validation successful: All files are accounted "
                     f"for. Original count: {original_count}, "
-                    f"Copied count (adjusted): {adjusted_copied_count}.")
+                    f"Copied count: {copied_count}.")
     else:
         logger.error(f"Validation failed: File counts do not match. "
                      f"Original count: {original_count}, "
-                     f"Copied count (adjusted): {adjusted_copied_count}.")
+                     f"Copied count: {copied_count}.")
         return
 
-    # Move temporary renamed files to final location
-    if masks_final_dir.exists():
-        shutil.rmtree(masks_final_dir)  # Remove existing directory
-        logger.warning(f"Existing directory {masks_final_dir} removed.")
-    masks_temp_dir.rename(masks_final_dir)
-    logger.info(f"Renamed files finalized in {masks_final_dir}.")
+    shutil.rmtree(masks_dir)
+    masks_dir.mkdir()
+    for item in masks_temp_dir.iterdir():
+        shutil.move(str(item), str(masks_dir / item.name))
 
-    # Cleanup: Remove original output directory
-    shutil.rmtree(masks_out_dir)
-    logger.info(f"Deleted original directory {masks_out_dir}.")
+    shutil.rmtree(masks_temp_dir)
+
+    logger.info(f"Moved renamed content to {masks_dir}")
 
 
 OPENS_SLIDE_EXTENSIONS = {
@@ -151,8 +148,9 @@ def write_wsi_paths_to_csv(
     raw_data_dir: str,
     masks_dir: str,
     output_csv: str,
-    dataset: str,
+    wsi_id_mapping_style: str,
 ):
+    logging.info(f"Writing raw WSI paths to {output_csv}")
     raw_data_dir = Path(raw_data_dir)
     masks_dir = Path(masks_dir)
 
@@ -162,9 +160,7 @@ def write_wsi_paths_to_csv(
                for f in mask_files}  # Use a set for efficient lookup
 
     # Define the renaming function for the dataset
-    rename_func = RENAMING_RULES.get(dataset)
-    if not rename_func:
-        raise ValueError(f"No renaming function found for dataset: {dataset}")
+    rename_func = WSI_ID_MAPPING_DICT.get(wsi_id_mapping_style)
 
     # Map WSI IDs to their paths
     path_to_wsi_id = {
@@ -184,56 +180,4 @@ def write_wsi_paths_to_csv(
     # Create a DataFrame and save to CSV
     df = pd.DataFrame(list(path_to_wsi_id.items()), columns=["WSI_ID", "Path"])
     df.to_csv(output_csv, index=False)
-    print(f"CSV file saved to {output_csv}")
-
-
-def write_wsi_paths_to_csv_old(results_tsv: str, output_csv: str, dataset: str,
-                               config: dict):
-    """
-    Extracts paths to WSI (Whole Slide Image) files from a results.tsv file, applies renaming rules, 
-    and saves the paths with their corresponding WSI IDs to a CSV file.
-
-    Args:
-        results_tsv (str): Path to the `results.tsv` file containing metadata, including command-line arguments.
-        output_csv (str): Path to the CSV file where the WSI paths and IDs will be saved.
-        dataset (str): Name of the dataset, used to apply dataset-specific renaming rules.
-        config (dict): Configuration dictionary containing the `data_dir` key, which specifies the base directory of the raw data.
-
-    Raises:
-        ValueError: If the `results.tsv` file does not contain a `#command_line_args` line.
-    """
-    results_tsv_path = Path(results_tsv)
-
-    # Read the results.tsv file
-    with results_tsv_path.open('r') as file:
-        lines = file.readlines()
-
-    # Extract the #command_line_args line
-    command_line_args_line = next(
-        (line for line in lines if line.startswith("#command_line_args")),
-        None)
-    if not command_line_args_line:
-        raise ValueError("No #command_line_args line found in results.tsv.")
-
-    # Resolve the raw data directory
-    raw_data_dir = Path(config["data_dir"]).resolve()
-
-    # Extract and process command-line arguments
-    command_line_args = command_line_args_line.split("\t")[1].split(" ")
-    file_paths = [
-        raw_data_dir / Path(*PurePath(arg).parts[2:])
-        for arg in command_line_args
-    ]
-
-    # Filter valid WSI files
-    wsi_files = [
-        path for path in file_paths if path.is_file() and path.suffix != ".ini"
-    ]
-
-    # Apply renaming rules to generate WSI IDs
-    rename_func = RENAMING_RULES.get(dataset)
-    path_to_wsi_id = {rename_func(str(path.name)): path for path in wsi_files}
-
-    # Create and save the DataFrame
-    df = pd.DataFrame(list(path_to_wsi_id.items()), columns=["WSI_ID", "Path"])
-    df.to_csv(output_csv, index=False)
+    logging.info(f"Writing raw WSI paths to {output_csv} - DONE")

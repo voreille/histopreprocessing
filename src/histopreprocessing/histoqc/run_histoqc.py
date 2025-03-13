@@ -9,6 +9,7 @@ import shutil
 import yaml
 
 from histopreprocessing.wsi_id_mapping import WSI_ID_MAPPING_DICT
+from .config_loader import load_histoqc_config
 
 logger = logging.getLogger(__name__)
 
@@ -125,22 +126,31 @@ def run_histoqc_task(input_dir,
                      force=False):
     input_dir = Path(input_dir).resolve()
     output_dir = Path(output_dir).resolve()
+
+    if config is None:
+        logging.info("No HistoQC config provided using default one")
+        config = load_histoqc_config()
+
     config = Path(config).resolve()
 
     filename_to_wsi_id_mapping = WSI_ID_MAPPING_DICT[wsi_id_mapping_style]
 
-    if config.suffix == ".yaml" or config.suffix == ".yaml":
+    if config.suffix == ".yml" or config.suffix == ".yaml":
         file_list, config_list = parse_histoqc_config_mapping(
             config, input_dir, search_pattern, filename_to_wsi_id_mapping)
-    else:
+    elif config.suffix == ".ini":
         file_list = list(input_dir.rglob(search_pattern))
         config_list = [config] * len(file_list)
+    else:
+        raise ValueError(
+            f"The config file {config} must be either a .yaml or .ini file")
 
     run_histoqc(file_list,
                 config_list,
                 input_dir,
                 output_dir,
-                num_workers=num_workers)
+                num_workers=num_workers,
+                force=force)
 
 
 def run_histoqc(file_list,
@@ -252,3 +262,15 @@ def run_histoqc(file_list,
         for log in error_logs:
             log.unlink()
         logger.info("Unique error logs deleted after concatenation.")
+
+    # Clean the directory structure
+    # Move files from output_dir/output/* to output_dir/
+    for file in histoqc_output_dir.iterdir():
+        destination = output_dir / file.name
+        shutil.move(str(file), str(destination))
+
+    # Remove the now-empty output_dir/output directory
+    histoqc_output_dir.rmdir()
+    logger.info(
+        f"Moved HistoQC results to {output_dir} and removed {histoqc_output_dir}."
+    )
