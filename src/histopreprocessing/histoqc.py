@@ -8,6 +8,8 @@ import shutil
 
 import yaml
 
+from histopreprocessing.wsi_id_mapping import WSI_ID_MAPPING_DICT
+
 logger = logging.getLogger(__name__)
 
 # A flag to keep track if the Docker image has been checked
@@ -79,22 +81,11 @@ def parse_and_log_output(output: str, logger: logging.Logger, context: str):
                 logger.info(f"{context}: {line}")
 
 
-def parse_histoqc_config_mapping(filepath, input_dir):
+def parse_histoqc_config_mapping(filepath, input_dir, search_pattern,
+                                 filename_to_wsi_id_mapping):
     """
-    Parse the HistoQC config mapping YAML file and resolve wsi_ids to file paths in the input directory,
-    filtering only valid WSI files (e.g., .svs, .tiff).
-
-    Args:
-        filepath (str): Path to the YAML file containing mappings.
-        input_dir (Path): Path to the directory containing the input WSIs.
-
-    Returns:
-        list[dict]: List of dictionaries, each containing 'config' and 'wsi_paths'.
+    Parse the HistoQC config mapping file to get the list of files and corresponding config files.
     """
-    valid_extensions = {
-        ".svs", ".tif", ".tiff", ".ndpi", ".vms", ".vmu", ".scn", ".mrxs",
-        ".bif", ".svslide"
-    }
 
     with open(filepath, 'r') as f:
         config_mapping = yaml.safe_load(f)
@@ -106,18 +97,10 @@ def parse_histoqc_config_mapping(filepath, input_dir):
         config_path = Path(mapping["config"])
         wsi_ids = mapping["wsi_ids"]
 
-        # Search for matching WSI files in the input directory
-        wsi_paths = []
-        for wsi_id in wsi_ids:
-            matching_files = [
-                file for file in input_dir.rglob(f"*{wsi_id}*")
-                if file.suffix.lower() in valid_extensions
-            ]
-            if not matching_files:
-                logger.warning(
-                    f"No valid WSI files found for WSI ID: {wsi_id}")
-            else:
-                wsi_paths.extend(matching_files)
+        wsi_paths = [
+            file for file in input_dir.rglob(search_pattern)
+            if filename_to_wsi_id_mapping(file) in wsi_ids
+        ]
 
         resolved_mappings.append({
             "config": config_path,
@@ -133,18 +116,31 @@ def parse_histoqc_config_mapping(filepath, input_dir):
         return file_list, config_list
 
 
-def run_histoqc_task(input_dir, output_dir, num_workers, config,
-                     search_pattern, wsi_id_mapping_style):
+def run_histoqc_task(input_dir,
+                     output_dir,
+                     config,
+                     wsi_id_mapping_style="TCGA",
+                     search_pattern="*.svs",
+                     num_workers=1,
+                     force=False):
     input_dir = Path(input_dir).resolve()
     output_dir = Path(output_dir).resolve()
     config = Path(config).resolve()
 
+    filename_to_wsi_id_mapping = WSI_ID_MAPPING_DICT[wsi_id_mapping_style]
+
     if config.suffix == ".yaml" or config.suffix == ".yaml":
         file_list, config_list = parse_histoqc_config_mapping(
-            config,
-            input_dir,
-        )
-    file_list = Path(input_dir).rglob(search_pattern)
+            config, input_dir, search_pattern, filename_to_wsi_id_mapping)
+    else:
+        file_list = list(input_dir.rglob(search_pattern))
+        config_list = [config] * len(file_list)
+
+    run_histoqc(file_list,
+                config_list,
+                input_dir,
+                output_dir,
+                num_workers=num_workers)
 
 
 def run_histoqc(file_list,
