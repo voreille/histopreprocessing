@@ -41,6 +41,9 @@ package-dir = {"" = "src"}
 [tool.setuptools.package-data]
 "*" = ["*.*"]
 
+[project.scripts]
+histopreprocessing = "histopreprocessing.cli:cli"
+
 
 # Mypy
 # ----

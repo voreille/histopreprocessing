@@ -150,7 +150,7 @@ def write_wsi_paths_to_csv(
     output_csv: str,
     wsi_id_mapping_style: str,
 ):
-    logging.info(f"Writing raw WSI paths to {output_csv}")
+    logger.info(f"Writing raw WSI paths to {output_csv}")
     raw_data_dir = Path(raw_data_dir)
     masks_dir = Path(masks_dir)
 
@@ -180,4 +180,4 @@ def write_wsi_paths_to_csv(
     # Create a DataFrame and save to CSV
     df = pd.DataFrame(list(path_to_wsi_id.items()), columns=["WSI_ID", "Path"])
     df.to_csv(output_csv, index=False)
-    logging.info(f"Writing raw WSI paths to {output_csv} - DONE")
+    logger.info(f"Writing raw WSI paths to {output_csv} - DONE")

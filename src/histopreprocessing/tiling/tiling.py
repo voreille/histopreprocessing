@@ -4,14 +4,10 @@ from multiprocessing.pool import ThreadPool, Pool
 
 import pandas as pd
 from tqdm import tqdm
-from dotenv import load_dotenv
 
 from .wsi_tiler import WSITilerWithMask
 
-load_dotenv()
-
-DEBUG = False
-project_dir = Path(__file__).parents[2].resolve()
+logger = logging.getLogger(__name__)
 
 
 def process_wsi(
@@ -26,7 +22,7 @@ def process_wsi(
     save_tile_overlay=False,
     save_metadata=True,
 ):
-    logging.info(f"Starting tiling for WSI {wsi_path.name}")
+    logger.info(f"Starting tiling for WSI {wsi_path.name}")
     try:
         tile_processor = WSITilerWithMask(
             wsi_path,
@@ -54,10 +50,10 @@ def process_wsi(
             raise RuntimeError(
                 f"Error encountered in tile processing for {wsi_path.name}")
 
-        logging.info(f"Tiling completed for WSI {wsi_path.name}")
+        logger.info(f"Tiling completed for WSI {wsi_path.name}")
 
     except Exception as e:
-        logging.error(f"Error processing WSI {wsi_path.name}: {e}")
+        logger.error(f"Error processing WSI {wsi_path.name}: {e}")
         return False
 
     if save_tile_overlay:
@@ -80,6 +76,7 @@ def tile_wsi_task(
 ):
     masks_dir = Path(masks_dir)
     output_dir = Path(output_dir)
+    output_dir.mkdir(exist_ok=True, parents=True)
 
     mask_files = [f for f in masks_dir.rglob("*mask_use.png")]
     df = pd.read_csv(Path(masks_dir) / "raw_wsi_path.csv")
@@ -111,4 +108,4 @@ def tile_wsi_task(
 
     for wsi_path, result in zip(wsi_paths_mapping.values(), results):
         if not result:
-            logging.warning(f"Processing failed for WSI {wsi_path.name}")
+            logger.warning(f"Processing failed for WSI {wsi_path.name}")

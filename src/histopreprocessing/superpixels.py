@@ -8,10 +8,7 @@ import numpy as np
 from PIL import Image
 from skimage.io import imsave
 from skimage import segmentation
-from dotenv import load_dotenv
 from tqdm import tqdm
-
-load_dotenv()
 
 logger = logging.getLogger(__name__)
 

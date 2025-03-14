@@ -1,10 +1,7 @@
 import json
 from pathlib import Path
-import pandas as pd
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
-
-project_dir = Path(__file__).parents[2].resolve()
 
 
 def find_tiles_in_folder(folder):
@@ -94,37 +91,3 @@ def create_superpixel_tile_mapping_task(tile_dir,
         json.dump(superpixel_list, f, indent=4)
 
     print(f"Superpixel-tile mapping saved to {output_json}")
-
-
-if __name__ == "__main__":
-    tile_dir = Path(
-        "/home/valentin/workspaces/histolung/data/interim/tiles_superpixels_with_overlap/"
-    )
-
-    wsi_ids_to_discard = [
-        'C3L-01924-25', 'C3L-01924-21', 'C3L-01924-27', 'C3L-01924-23',
-        'C3L-01924-22', 'C3L-01924-24', 'C3L-01924-28',
-        'TCGA-05-4430-01Z-00-DX1', 'TCGA-05-4415-01Z-00-DX1',
-        'TCGA-05-4402-01Z-00-DX1', 'TCGA-05-4427-01Z-00-DX1',
-        'TCGA-05-4245-01Z-00-DX1', 'TCGA-05-4422-01Z-00-DX1',
-        'TCGA-05-4250-01Z-00-DX1', 'TCGA-05-4398-01Z-00-DX1',
-        'TCGA-05-4395-01Z-00-DX1', 'TCGA-05-4418-01Z-00-DX1',
-        'TCGA-05-4424-01Z-00-DX1', 'TCGA-05-4434-01Z-00-DX1',
-        'TCGA-05-4433-01Z-00-DX1', 'TCGA-05-4397-01Z-00-DX1',
-        'TCGA-05-4426-01Z-00-DX1', 'TCGA-05-4432-01Z-00-DX1',
-        'TCGA-05-4382-01Z-00-DX1', 'TCGA-05-4244-01Z-00-DX1',
-        'TCGA-05-4417-01Z-00-DX1', 'TCGA-05-4403-01Z-00-DX1',
-        'TCGA-05-4249-01Z-00-DX1', 'TCGA-05-4420-01Z-00-DX1',
-        'TCGA-05-4396-01Z-00-DX1', 'TCGA-05-4405-01Z-00-DX1'
-    ]
-
-    test_df = pd.read_csv(project_dir / "data/metadata/cptac_test.csv")
-    test_wsi_ids = list(test_df["Slide_ID"].values)
-
-    create_superpixel_tile_mapping_task(
-        tile_dir,
-        output_json=tile_dir / "superpixel_mapping_train.json",
-        wsi_ids_to_discard=set(
-            test_wsi_ids + wsi_ids_to_discard),  # Use a set for fast lookups
-        num_workers=8  # Adjust based on NAS performance
-    )

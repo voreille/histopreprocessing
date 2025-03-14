@@ -126,9 +126,10 @@ def run_histoqc_task(input_dir,
                      force=False):
     input_dir = Path(input_dir).resolve()
     output_dir = Path(output_dir).resolve()
+    output_dir.mkdir(exist_ok=True, parents=True)
 
     if config is None:
-        logging.info("No HistoQC config provided using default one")
+        logger.warning("No HistoQC config provided using default one")
         config = load_histoqc_config()
 
     config = Path(config).resolve()

@@ -15,9 +15,11 @@ project_dir = Path(__file__).parents[2].resolve()
 
 
 @click.group()
-@click.option("--log-file", type=click.Path(), help="Path to log file.")
+@click.option("--log-file",
+              type=click.Path(),
+              help="Optional file path to save log output.")
 def cli(log_file):
-    """CLI for histopreprocessing tasks."""
+    """Command-line interface for executing histopathology pre-processing tasks."""
     configure_logging(log_file=log_file)
 
 
@@ -29,41 +31,48 @@ def cli(log_file):
 @click.option(
     "--output-dir",
     required=True,
-    help="Path to the output directory",
+    type=click.Path(),
+    help="Directory where output files will be saved.",
 )
 @click.option(
     "--num-workers",
     default=1,
     show_default=True,
-    help="Number of workers for parallel processing",
+    help="Number of parallel worker processes.",
 )
 @click.option(
     "--config",
     "-c",
     type=click.Path(exists=True),
     default=None,
-    help="Path to the configuration file",
+    help="Path to a configuration file with custom settings."
+    "If not provided a default config will be chosen.",
 )
 @click.option(
     "--search-pattern",
     type=click.STRING,
     default="*.svs",
-    help="String pattern to search for in input-dir.",
+    show_default=True,
+    help="Filename pattern to filter input WSIs.",
 )
 @click.option(
     "--wsi-id-mapping-style",
     type=click.STRING,
     default="TCGA",
+    show_default=True,
+    help="Identifier mapping style for WSIs."
+    "For now the only possibilites or TCGA or CPTAC.",
 )
-@click.option("--force",
-              is_flag=True,
-              show_default=True,
-              default=False,
-              help="To rerun HistoQC if the files already exist.")
+@click.option(
+    "--force",
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="Force rerun of HistoQC even if output files already exist.",
+)
 def run_histoqc(input_dir, output_dir, num_workers, config, search_pattern,
                 wsi_id_mapping_style, force):
-    """Run HistoQC on the specified dataset."""
-
+    """Execute HistoQC on the specified dataset to save mask and generate a CSV with raw WSI paths."""
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
     run_histoqc_task(
@@ -94,9 +103,11 @@ def run_histoqc(input_dir, output_dir, num_workers, config, search_pattern,
     "--wsi-id-mapping-style",
     type=click.STRING,
     default="TCGA",
+    show_default=True,
+    help="Identifier mapping style used for renaming mask folders.",
 )
 def rename_masks(input_dir, wsi_id_mapping_style):
-    """Rename mask folders."""
+    """Rename mask directories based on the provided WSI identifier mapping style."""
     rename_masks_task(input_dir, wsi_id_mapping_style)
 
 
@@ -105,12 +116,12 @@ def rename_masks(input_dir, wsi_id_mapping_style):
     "--masks-dir",
     required=True,
     type=click.Path(exists=True),
-    help="Path to the output of HistoQC",
+    help="Directory containing HistoQC output masks.",
 )
 @click.option(
     "--output-dir",
     required=True,
-    help="Path to the output directory",
+    help="Destination directory for generated tiles.",
 )
 @click.option(
     "--tile-size",
@@ -118,34 +129,42 @@ def rename_masks(input_dir, wsi_id_mapping_style):
     type=int,
     default=224,
     show_default=True,
-    help="Tile size",
+    help="Size (in pixels) of each tile.",
 )
-@click.option("--threshold",
-              type=float,
-              default=0.8,
-              show_default=True,
-              help="Threshold for mask coverage")
+@click.option(
+    "--threshold",
+    type=float,
+    default=0.8,
+    show_default=True,
+    help="Minimum mask coverage threshold.",
+)
 @click.option(
     "--magnification",
     type=int,
     default=10,
     show_default=True,
-    help="Magnification",
+    help="Magnification level for tiling.",
 )
-@click.option("--num-workers",
-              default=1,
-              show_default=True,
-              help="Number of workers")
-@click.option("--save-overlay",
-              is_flag=True,
-              show_default=True,
-              default=True,
-              help="Wether to save overlays of the tiles")
-@click.option("--save-masks",
-              is_flag=True,
-              show_default=True,
-              default=True,
-              help="wether to save the tiled masks")
+@click.option(
+    "--num-workers",
+    default=1,
+    show_default=True,
+    help="Number of parallel worker processes.",
+)
+@click.option(
+    "--save-overlay",
+    is_flag=True,
+    show_default=True,
+    default=True,
+    help="Save overlay images for visualizing tile boundaries.",
+)
+@click.option(
+    "--save-masks",
+    is_flag=True,
+    show_default=True,
+    default=True,
+    help="Save generated mask tiles.",
+)
 def tile_wsi(
     masks_dir,
     output_dir,
@@ -156,7 +175,7 @@ def tile_wsi(
     save_overlay,
     save_masks,
 ):
-    """Tile WSIs for the dataset."""
+    """Generate tiles from whole slide images (WSIs) using HistoQC mask outputs."""
     tile_wsi_task(
         masks_dir,
         output_dir,
@@ -176,6 +195,7 @@ def tile_wsi(
     type=click.Path(exists=True),
 )
 def write_tiles_metadata(input_dir):
+    """Generate metadata for the tiles present in the specified dataset directory."""
     write_tiles_metadata_task(input_dir)
 
 
@@ -184,31 +204,38 @@ def write_tiles_metadata(input_dir):
     "--raw-wsi-dir",
     required=True,
     type=click.Path(exists=True),
+    help="Directory containing raw whole slide images.",
 )
 @click.option(
     "--masks-dir",
     type=click.Path(exists=True),
     required=True,
-    help="",
+    help="Directory containing the corresponding mask images.",
 )
 @click.option(
     "--output-dir",
     required=True,
-    help="",
+    help="Directory to save the segmented superpixel outputs.",
 )
-@click.option("--num-workers",
-              default=1,
-              show_default=True,
-              help="Number of workers")
-@click.option("--average-tile-size",
-              default=672,
-              show_default=True,
-              help="Number of workers")
-@click.option("--save-overlay",
-              is_flag=True,
-              show_default=True,
-              default=True,
-              help="Wether to save overlays of the tiles")
+@click.option(
+    "--num-workers",
+    default=1,
+    show_default=True,
+    help="Number of parallel worker processes.",
+)
+@click.option(
+    "--average-tile-size",
+    default=672,
+    show_default=True,
+    help="Average tile size (in pixels) used for segmentation.",
+)
+@click.option(
+    "--save-overlay",
+    is_flag=True,
+    show_default=True,
+    default=True,
+    help="Save overlay images for superpixel segmentation.",
+)
 def superpixel_segmentation(
     raw_wsi_dir,
     masks_dir,
@@ -217,8 +244,7 @@ def superpixel_segmentation(
     average_tile_size,
     save_overlay,
 ):
-    """Tile WSIs for the dataset."""
-
+    """Perform superpixel segmentation on WSIs and generate tile overlays."""
     superpixel_segmentation_task(
         raw_data_dir=raw_wsi_dir,
         masks_dir=masks_dir,
@@ -234,18 +260,18 @@ def superpixel_segmentation(
     "--raw-wsi-dir",
     required=True,
     type=click.Path(exists=True),
-    help="Path to the output of HistoQC",
+    help="Directory containing raw whole slide images.",
 )
 @click.option(
     "--superpixel-dir",
     required=True,
     type=click.Path(exists=True),
-    help="Path to the output of HistoQC",
+    help="Directory with superpixel segmentation outputs.",
 )
 @click.option(
     "--output-dir",
     required=True,
-    help="Path to the output directory",
+    help="Destination directory for the tiled output.",
 )
 @click.option(
     "--tile-size",
@@ -253,34 +279,42 @@ def superpixel_segmentation(
     type=int,
     default=224,
     show_default=True,
-    help="Tile size",
+    help="Size (in pixels) of each generated tile.",
 )
-@click.option("--threshold",
-              type=float,
-              default=0.8,
-              show_default=True,
-              help="Threshold for mask coverage")
+@click.option(
+    "--threshold",
+    type=float,
+    default=0.8,
+    show_default=True,
+    help="Minimum mask coverage threshold.",
+)
 @click.option(
     "--magnification",
     type=int,
     default=10,
     show_default=True,
-    help="Magnification",
+    help="Magnification level for tiling.",
 )
-@click.option("--num-workers",
-              default=1,
-              show_default=True,
-              help="Number of workers")
-@click.option("--save-overlay",
-              is_flag=True,
-              show_default=True,
-              default=True,
-              help="Wether to save overlays of the tiles")
-@click.option("--save-masks",
-              is_flag=True,
-              show_default=True,
-              default=True,
-              help="wether to save the tiled masks")
+@click.option(
+    "--num-workers",
+    default=1,
+    show_default=True,
+    help="Number of parallel worker processes.",
+)
+@click.option(
+    "--save-overlay",
+    is_flag=True,
+    show_default=True,
+    default=True,
+    help="Save overlay images of the generated tiles.",
+)
+@click.option(
+    "--save-masks",
+    is_flag=True,
+    show_default=True,
+    default=True,
+    help="Save the tiled mask images.",
+)
 def tile_wsi_from_superpixel_no_overlap(
     raw_wsi_dir,
     superpixel_dir,
@@ -292,7 +326,7 @@ def tile_wsi_from_superpixel_no_overlap(
     save_overlay,
     save_masks,
 ):
-    """Tile WSIs for the dataset."""
+    """Generate non-overlapping tiles from WSIs using superpixel segmentation outputs."""
     tile_wsi_superpixel_task_no_overlap(
         raw_wsi_dir,
         superpixel_dir,
@@ -312,18 +346,18 @@ def tile_wsi_from_superpixel_no_overlap(
     "--raw-wsi-dir",
     required=True,
     type=click.Path(exists=True),
-    help="Path to the output of HistoQC",
+    help="Directory containing raw whole slide images.",
 )
 @click.option(
     "--superpixel-dir",
     required=True,
     type=click.Path(exists=True),
-    help="Path to the output of HistoQC",
+    help="Directory with superpixel segmentation outputs.",
 )
 @click.option(
     "--output-dir",
     required=True,
-    help="Path to the output directory",
+    help="Destination directory for the tiled output.",
 )
 @click.option(
     "--tile-size",
@@ -331,41 +365,51 @@ def tile_wsi_from_superpixel_no_overlap(
     type=int,
     default=224,
     show_default=True,
-    help="Tile size",
+    help="Size (in pixels) of each tile.",
 )
-@click.option("--threshold",
-              type=float,
-              default=0.8,
-              show_default=True,
-              help="Threshold for mask coverage")
+@click.option(
+    "--threshold",
+    type=float,
+    default=0.8,
+    show_default=True,
+    help="Minimum mask coverage threshold.",
+)
 @click.option(
     "--magnification",
     type=int,
     default=10,
     show_default=True,
-    help="Magnification",
+    help="Magnification level for tiling.",
 )
-@click.option("--num-workers",
-              default=1,
-              show_default=True,
-              help="Number of workers")
-@click.option("--save-overlay",
-              is_flag=True,
-              show_default=True,
-              default=True,
-              help="Wether to save overlays of the tiles")
-@click.option("--average-superpixel-area",
-              type=float,
-              default=486800,
-              show_default=True,
-              help="Average superpixel area in micrometer "
-              "present in the dataset, used in the "
-              "computation to draw less from small superpixel")
-@click.option("--average-n-tiles",
-              type=click.INT,
-              default=25,
-              show_default=True,
-              help="Average number of tiles to draw from each superpixel.")
+@click.option(
+    "--num-workers",
+    default=1,
+    show_default=True,
+    help="Number of parallel worker processes.",
+)
+@click.option(
+    "--save-overlay",
+    is_flag=True,
+    show_default=True,
+    default=True,
+    help="Save overlay images of the generated tiles.",
+)
+@click.option(
+    "--average-superpixel-area",
+    type=float,
+    default=486800,
+    show_default=True,
+    help="Average area (in µm²) of superpixels should "
+    "be computed on the whole dataset, used to "
+    "compute the number of tiles to draw.",
+)
+@click.option(
+    "--average-n-tiles",
+    type=click.INT,
+    default=25,
+    show_default=True,
+    help="Average number of tiles to extract per superpixel.",
+)
 def tile_wsi_from_superpixel_random_overlap(
     raw_wsi_dir,
     superpixel_dir,
@@ -378,7 +422,7 @@ def tile_wsi_from_superpixel_random_overlap(
     average_superpixel_area,
     average_n_tiles,
 ):
-    """Tile WSIs for the dataset."""
+    """Generate tiles from WSIs using a random overlap method based on superpixel segmentation outputs."""
     tile_wsi_superpixel_task_random_overlap(
         raw_wsi_dir,
         superpixel_dir,
@@ -408,20 +452,24 @@ def validate_is_json(ctx, param, value):
     "--tiles-dir",
     type=click.Path(exists=True),
     required=True,
+    help="Directory containing tile images.",
 )
 @click.option(
     "--output-file",
     type=click.Path(),
     required=True,
     callback=validate_is_json,
+    help=
+    "Destination JSON file path for saving the superpixel-to-tile mapping.",
 )
 @click.option(
     "--num-workers",
     default=1,
     show_default=True,
-    help="Number of workers for parallel processing",
+    help="Number of parallel worker processes.",
 )
 def create_superpixel_tile_mapping(tiles_dir, output_file, num_workers):
+    """Create a mapping between superpixels and their corresponding tiles and save it as a JSON file."""
     create_superpixel_tile_mapping_task(tiles_dir,
                                         output_file,
                                         num_workers=num_workers)

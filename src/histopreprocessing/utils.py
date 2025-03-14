@@ -16,7 +16,7 @@ def configure_logging(log_file=None):
     # Stream handler (logs to stdout)
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
-    console_formatter = logging.Formatter("%(asctime)s - %(message)s")
+    console_formatter = logging.Formatter(LOG_FORMAT)
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 
