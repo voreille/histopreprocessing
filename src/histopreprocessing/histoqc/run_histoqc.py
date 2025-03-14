@@ -190,7 +190,6 @@ def run_histoqc(file_list,
 
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
-    histoqc_output_dir = output_dir / "output"
 
     # Translate file paths to container paths
     container_input_dir = "/data_ro"
@@ -211,7 +210,7 @@ def run_histoqc(file_list,
     for idx, (config_file,
               container_files) in enumerate(config_to_files.items()):
         histoqc_command = (f"histoqc_pipeline {' '.join(container_files)} "
-                           f"-o /data/output -c {config_file}")
+                           f"-o /data -c {config_file}")
         if force:
             histoqc_command += " --force"
 
@@ -232,9 +231,9 @@ def run_histoqc(file_list,
             result = subprocess.run(command, check=True)
 
             # Rename error.log to a unique name
-            error_log_path = histoqc_output_dir / "error.log"
+            error_log_path = output_dir / "error.log"
             if error_log_path.exists():
-                unique_error_log_path = histoqc_output_dir / f"error_{idx}.log"
+                unique_error_log_path = output_dir / f"error_{idx}.log"
                 shutil.move(error_log_path, unique_error_log_path)
                 error_logs.append(unique_error_log_path)
 
@@ -252,7 +251,7 @@ def run_histoqc(file_list,
 
     # Concatenate all error logs into a single error.log
     if error_logs:
-        final_error_log = histoqc_output_dir / "error.log"
+        final_error_log = output_dir / "error.log"
         with open(final_error_log, "w") as outfile:
             for log in error_logs:
                 with open(log, "r") as infile:
@@ -263,15 +262,3 @@ def run_histoqc(file_list,
         for log in error_logs:
             log.unlink()
         logger.info("Unique error logs deleted after concatenation.")
-
-    # Clean the directory structure
-    # Move files from output_dir/output/* to output_dir/
-    for file in histoqc_output_dir.iterdir():
-        destination = output_dir / file.name
-        shutil.move(str(file), str(destination))
-
-    # Remove the now-empty output_dir/output directory
-    histoqc_output_dir.rmdir()
-    logger.info(
-        f"Moved HistoQC results to {output_dir} and removed {histoqc_output_dir}."
-    )

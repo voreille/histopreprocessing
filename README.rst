@@ -47,9 +47,8 @@ histopreprocessing tile-wsi --masks-dir data/masks_test/ --output-dir data/tiles
 
 TASKS
 --------
+- [ ] Check HistoQC with a mapping config/wsi, check the error.log and such
 - [ ] remove the need fotr the raw_wsi_path.csv
-- [ ] change of output folder is handled in the histoqc_task, since it 
-- [ ] Refactor logging
 
 Credits
 -------
