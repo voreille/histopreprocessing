@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 import multiprocessing
+import warnings
 
 import openslide
 import numpy as np
@@ -75,11 +76,15 @@ def process_single_mask(args):
     image_resized, segments = superpixel_segmentation_one_image(
         wsi_slide, mask_path, average_tile_size=average_tile_size, **kwargs)
 
-    # Save segmentation mask
-    np.save(output_segments / f"{wsi_id}_segments.npy",
-            segments)  # NumPy format
-    imsave(output_segments / f"{wsi_id}_segments.tiff",
-           segments.astype(np.uint16))  # TIFF format
+    # Save segmentation mask and filter low contras warning
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            ".*low contrast image.*",
+            UserWarning,
+        )
+        imsave(output_segments / f"{wsi_id}_segments.tiff",
+               segments.astype(np.uint16))  # TIFF format
 
     # Save overlay image
     if save_overlay:

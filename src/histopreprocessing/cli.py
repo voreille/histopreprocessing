@@ -9,6 +9,7 @@ from histopreprocessing.tiling import (tile_wsi_task,
 from histopreprocessing.metadata import write_tiles_metadata_task
 from histopreprocessing.utils import configure_logging
 from histopreprocessing.superpixels import superpixel_segmentation_task
+from histopreprocessing.superpixel_mapping import create_superpixel_tile_mapping_task
 
 project_dir = Path(__file__).parents[2].resolve()
 
@@ -230,13 +231,13 @@ def superpixel_segmentation(
 
 @cli.command()
 @click.option(
-    "--superpixel-dir",
+    "--raw-wsi-dir",
     required=True,
     type=click.Path(exists=True),
     help="Path to the output of HistoQC",
 )
 @click.option(
-    "--masks-dir",
+    "--superpixel-dir",
     required=True,
     type=click.Path(exists=True),
     help="Path to the output of HistoQC",
@@ -281,8 +282,8 @@ def superpixel_segmentation(
               default=True,
               help="wether to save the tiled masks")
 def tile_wsi_from_superpixel_no_overlap(
+    raw_wsi_dir,
     superpixel_dir,
-    masks_dir,
     output_dir,
     tile_size,
     threshold,
@@ -293,8 +294,8 @@ def tile_wsi_from_superpixel_no_overlap(
 ):
     """Tile WSIs for the dataset."""
     tile_wsi_superpixel_task_no_overlap(
+        raw_wsi_dir,
         superpixel_dir,
-        masks_dir,
         output_dir,
         tile_size=tile_size,
         threshold=threshold,
@@ -305,15 +306,16 @@ def tile_wsi_from_superpixel_no_overlap(
         magnification=magnification,
     )
 
+
 @cli.command()
 @click.option(
-    "--superpixel-dir",
+    "--raw-wsi-dir",
     required=True,
     type=click.Path(exists=True),
     help="Path to the output of HistoQC",
 )
 @click.option(
-    "--masks-dir",
+    "--superpixel-dir",
     required=True,
     type=click.Path(exists=True),
     help="Path to the output of HistoQC",
@@ -352,36 +354,77 @@ def tile_wsi_from_superpixel_no_overlap(
               show_default=True,
               default=True,
               help="Wether to save overlays of the tiles")
-@click.option("--save-masks",
-              is_flag=True,
+@click.option("--average-superpixel-area",
+              type=float,
+              default=486800,
               show_default=True,
-              default=True,
-              help="wether to save the tiled masks")
+              help="Average superpixel area in micrometer "
+              "present in the dataset, used in the "
+              "computation to draw less from small superpixel")
+@click.option("--average-n-tiles",
+              type=click.INT,
+              default=25,
+              show_default=True,
+              help="Average number of tiles to draw from each superpixel.")
 def tile_wsi_from_superpixel_random_overlap(
+    raw_wsi_dir,
     superpixel_dir,
-    masks_dir,
     output_dir,
     tile_size,
     threshold,
     magnification,
     num_workers,
     save_overlay,
-    save_masks,
+    average_superpixel_area,
+    average_n_tiles,
 ):
     """Tile WSIs for the dataset."""
     tile_wsi_superpixel_task_random_overlap(
+        raw_wsi_dir,
         superpixel_dir,
-        masks_dir,
         output_dir,
         tile_size=tile_size,
         threshold=threshold,
         num_workers_wsi=1,
         num_workers_tiles=num_workers,
         save_tile_overlay=save_overlay,
-        save_masks=save_masks,
         magnification=magnification,
+        average_superpixel_area=average_superpixel_area,
+        average_n_tiles=average_n_tiles,
     )
 
+
+def validate_is_json(ctx, param, value):
+    allowed_extensions = {".json"}  # Adjust as needed
+    if value and not value.lower().endswith(tuple(allowed_extensions)):
+        raise click.BadParameter(
+            f"File must have one of the following extensions: {', '.join(allowed_extensions)}"
+        )
+    return value
+
+
+@cli.command()
+@click.option(
+    "--tiles-dir",
+    type=click.Path(exists=True),
+    required=True,
+)
+@click.option(
+    "--output-file",
+    type=click.Path(),
+    required=True,
+    callback=validate_is_json,
+)
+@click.option(
+    "--num-workers",
+    default=1,
+    show_default=True,
+    help="Number of workers for parallel processing",
+)
+def create_superpixel_tile_mapping(tiles_dir, output_file, num_workers):
+    create_superpixel_tile_mapping_task(tiles_dir,
+                                        output_file,
+                                        num_workers=num_workers)
 
 
 if __name__ == "__main__":

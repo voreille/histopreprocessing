@@ -1,9 +1,10 @@
+from pathlib import Path
 import logging
 from multiprocessing.pool import ThreadPool, Pool
 
 from tqdm import tqdm
 
-from histolung.data.wsi_tiler import WSITilerWithSuperPixelMask
+from .wsi_tiler import WSITilerWithSuperPixelMask
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -89,6 +90,10 @@ def tile_wsi_superpixel_task_no_overlap(
     save_masks=False,
     magnification=10,
 ):
+    raw_data_dir = Path(raw_data_dir)
+    superpixels_dir = Path(superpixels_dir)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(exist_ok=True, parents=True)
 
     mask_files = [f for f in superpixels_dir.rglob("*.tiff")]
 

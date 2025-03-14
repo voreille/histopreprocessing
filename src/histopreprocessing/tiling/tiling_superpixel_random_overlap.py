@@ -1,9 +1,10 @@
+from pathlib import Path
 import logging
 from multiprocessing.pool import ThreadPool, Pool
 
 from tqdm import tqdm
 
-from histolung.data.wsi_tiler import WSITilerWithSuperPixelMaskWithOverlap
+from .wsi_tiler import WSITilerWithSuperPixelMaskWithOverlap
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -40,12 +41,6 @@ def process_wsi(
         if num_workers_tiles > 1:
 
             with ThreadPool(processes=num_workers_tiles) as pool:
-                # results = list(
-                #     tqdm(pool.imap_unordered(tile_processor,
-                #                              superpixel_labels),
-                #          total=len(superpixel_labels),
-                #          desc="Processing superpixels"))
-
                 results = list(
                     pool.imap_unordered(
                         tile_processor,
@@ -53,10 +48,7 @@ def process_wsi(
                     ))
 
         else:
-            results = [
-                # tile_processor(label) for label in tqdm(superpixel_labels)
-                tile_processor(label) for label in superpixel_labels
-            ]
+            results = [tile_processor(label) for label in superpixel_labels]
 
         if any(isinstance(res, Exception) for res in results):
             raise RuntimeError(
@@ -95,7 +87,7 @@ def get_wsi_path_from_mask_path(mask_path, raw_data_dir):
 
 def tile_wsi_superpixel_task_random_overlap(
     raw_data_dir,
-    masks_dir,
+    superpixels_dir,
     output_dir,
     tile_size=224,
     threshold=0.8,
@@ -107,8 +99,12 @@ def tile_wsi_superpixel_task_random_overlap(
     average_superpixel_area=1000,
     average_n_tiles=10,
 ):
+    raw_data_dir = Path(raw_data_dir)
+    superpixels_dir = Path(superpixels_dir)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(exist_ok=True, parents=True)
 
-    mask_files = [f for f in masks_dir.rglob("*.tiff")]
+    mask_files = [f for f in superpixels_dir.rglob("*.tiff")]
 
     # Create a list of arguments for parallel processing
     wsi_args = [(
