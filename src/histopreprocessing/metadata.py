@@ -7,9 +7,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def write_tiles_metadata_task(input_dir):
+def write_tiles_metadata_task(input_dir, output_json):
     """Store metatdata about tiles path, label for the dataloader"""
     input_dir = Path(input_dir)
+    output_json = Path(output_json)
+
     wsi_data = []
     for wsi_id_dir in input_dir.iterdir():
         if wsi_id_dir.is_dir():
@@ -26,7 +28,7 @@ def write_tiles_metadata_task(input_dir):
                     "patch_dir": str(patch_dir),
                     "patch_files": patch_files,
                 })
-    output_json = input_dir / "tiles_metadata.json"
+
     with open(output_json, 'w') as f:
         json.dump(wsi_data, f, indent=4)
 

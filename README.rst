@@ -29,21 +29,159 @@ Features
 * TODO
 
 
+
+Installation
+------------
+
+To install **histopreprocessing** locally, follow these steps:
+
+1. Clone the repository:
+
+   ::
+
+       git clone https://github.com/voreille/histopreprocessing.git
+
+2. Change to the project directory:
+
+   ::
+
+       cd histopreprocessing
+
+3. Install the package in editable mode:
+
+   ::
+
+       pip install -e .
+
+.. warning::
+
+   It is recommended to use a Python environment manager such as Conda or Virtualenv to avoid conflicts with your system packages.
+
+
+After installation, you can run the CLI commands using the **histopreprocessing** command followed by the task name. For example, see the **Usage** section for detailed instructions on commands like:
+
+   ::
+
+       histopreprocessing run-histoqc
+       histopreprocessing rename-masks
+       histopreprocessing tile-wsi
+       ...
+
 Usages
 --------
-The command should be ran in the following order:
+Command Usages
+--------------
 
-1. Run HistoQC as:
-histopreprocessing run-histoqc data/tcga_test/ --output-dir data/masks_test -c path/to/config.ini --num-workers 12 
+Below are usage examples for each command as configured in the launch.json:
 
-That command run HistoQC in a docker container, config.ini is the config used by HistoQC see their docs 
-by default config_light.ini is used
+1. **Debug run_histoqc**
 
-2. Rename folder containings masks:
+   This command executes HistoQC on raw WSIs. It processes images found in the raw WSI directory and outputs mask files to the specified output directory.
+   
+   **Example:**
+   
+   ::
+   
+       histopreprocessing run-histoqc \
+         --raw-wsi-dir data/tcga_test \
+         --output-dir data/masks_test \
+         --num-workers 4
 
+2. **Debug rename_masks**
 
-3. run tiling as:
-histopreprocessing tile-wsi --masks-dir data/masks_test/ --output-dir data/tiles_test --num-workers 12
+   This command renames mask directories based on the provided WSI identifier mapping style.
+   
+   **Example:**
+   
+   ::
+   
+       histopreprocessing rename-masks \
+         --masks-dir data/masks_test \
+         --wsi-id-mapping-style TCGA
+
+3. **Debug tile_wsi**
+
+   This command generates tiles from WSIs using the HistoQC mask outputs. You can adjust tile size, coverage threshold, and the number of worker processes.
+   
+   **Example:**
+   
+   ::
+   
+       histopreprocessing tile-wsi \
+         --raw-wsi-dir data/tcga_test \
+         --masks-dir data/masks_test \
+         --output-dir data/tile_test \
+         --tile-size 224 \
+         --threshold 0.5 \
+         --num-workers 4
+
+4. **Debug write_metadata**
+
+   This command generates metadata for the tiles and writes the output to a JSON file.
+   
+   **Example:**
+   
+   ::
+   
+       histopreprocessing write-tiles-metadata \
+         --tiles-dir data/tile_test \
+         --output-json data/tile_test/metadata.json
+
+5. **Debug superpixel_segmentation**
+
+   This command performs superpixel segmentation on the WSIs using the corresponding mask images and saves the results to the specified output directory.
+   
+   **Example:**
+   
+   ::
+   
+       histopreprocessing superpixel-segmentation \
+         --raw-wsi-dir data/tcga_test \
+         --masks-dir data/masks_test \
+         --output-dir data/superpixel_test \
+         --num-workers 12
+
+6. **Debug tile_wsi_from_superpixel_no_overlap**
+
+   This command generates non-overlapping tiles from WSIs using outputs from a superpixel segmentation. It requires directories for raw WSIs and superpixel results, and an output directory for the tiles.
+   
+   **Example:**
+   
+   ::
+   
+       histopreprocessing tile-wsi-from-superpixel-no-overlap \
+         --raw-wsi-dir data/tcga_test \
+         --superpixel-dir data/superpixel_test \
+         --output-dir data/superpixel_tiling_no_test \
+         --num-workers 12
+
+7. **Debug tile_wsi_from_superpixel_random_overlap**
+
+   This command generates tiles using a random overlap method based on superpixel segmentation outputs. It allows you to process WSIs with an element of randomness in tile extraction.
+   
+   **Example:**
+   
+   ::
+   
+       histopreprocessing tile-wsi-from-superpixel-random-overlap \
+         --raw-wsi-dir data/tcga_test \
+         --superpixel-dir data/superpixel_test \
+         --output-dir data/superpixel_tiling_ro_test \
+         --num-workers 12
+
+8. **Debug create_superpixel_tile_mapping**
+
+   This command creates a mapping between superpixels and their corresponding tiles, saving the results as a JSON file.
+   
+   **Example:**
+   
+   ::
+   
+       histopreprocessing create-superpixel-tile-mapping \
+         --tiles-dir data/superpixel_tiling_ro_test \
+         --output-json data/superpixel_ro_mapping.json \
+         --num-workers 12
+
 
 TASKS
 --------

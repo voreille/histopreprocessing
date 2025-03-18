@@ -5,7 +5,9 @@ from multiprocessing.pool import ThreadPool, Pool
 import pandas as pd
 from tqdm import tqdm
 
+from histopreprocessing.wsi_id_mapping import WSI_ID_MAPPING_DICT
 from .wsi_tiler import WSITilerWithMask
+from ..utils import map_masks_to_wsi
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +66,7 @@ def process_wsi(
 
 
 def tile_wsi_task(
+    raw_wsi_dir,
     masks_dir,
     output_dir,
     tile_size=224,
@@ -73,22 +76,34 @@ def tile_wsi_task(
     save_tile_overlay=False,
     save_masks=False,
     magnification=10,
+    wsi_id_mapping_style="TCGA",
 ):
+    raw_wsi_dir = Path(raw_wsi_dir)
     masks_dir = Path(masks_dir)
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
 
     mask_files = [f for f in masks_dir.rglob("*mask_use.png")]
-    df = pd.read_csv(Path(masks_dir) / "raw_wsi_path.csv")
-    wsi_paths_mapping = {
-        row["WSI_ID"]: Path(row["Path"])
-        for _, row in df.iterrows()
-    }
+    filename_to_wsi_id = WSI_ID_MAPPING_DICT[wsi_id_mapping_style]
+
+    if len(mask_files) == 0:
+        raise ValueError(f"No HistoQC masks found in {masks_dir}")
+
+    test_mask_name = mask_files[0].name.removesuffix(".svs_mask_use.png")
+    if test_mask_name != filename_to_wsi_id(mask_files[0].name):
+        raise ValueError(f"The masks in {masks_dir} were not renamed "
+                         "you must run the command histopreprocessing "
+                         "rename-masks on that folder.")
+
+    logger.info("Searching for matching WSI path")
+    wsi_paths_mapping = map_masks_to_wsi(mask_files, raw_wsi_dir,
+                                         filename_to_wsi_id)
+    logger.info("Searching for matching WSI path - DONE")
 
     # Create a list of arguments for parallel processing
     wsi_args = [
         (
-            wsi_paths_mapping[mask_path.stem.split(".")[0]],  # WSI path
+            wsi_paths_mapping[mask_path],
             mask_path,  # Mask path
             output_dir,
             magnification,

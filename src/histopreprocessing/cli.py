@@ -14,6 +14,15 @@ from histopreprocessing.superpixel_mapping import create_superpixel_tile_mapping
 project_dir = Path(__file__).parents[2].resolve()
 
 
+def validate_is_json(ctx, param, value):
+    allowed_extensions = {".json"}  # Adjust as needed
+    if value and not value.lower().endswith(tuple(allowed_extensions)):
+        raise click.BadParameter(
+            f"File must have one of the following extensions: {', '.join(allowed_extensions)}"
+        )
+    return value
+
+
 @click.group()
 @click.option("--log-file",
               type=click.Path(),
@@ -24,9 +33,11 @@ def cli(log_file):
 
 
 @cli.command()
-@click.argument(
-    "input_dir",
+@click.option(
+    "--raw-wsi-dir",
     type=click.Path(exists=True),
+    required=True,
+    help="Directory containing the raw WSI files.",
 )
 @click.option(
     "--output-dir",
@@ -70,13 +81,13 @@ def cli(log_file):
     default=False,
     help="Force rerun of HistoQC even if output files already exist.",
 )
-def run_histoqc(input_dir, output_dir, num_workers, config, search_pattern,
+def run_histoqc(raw_wsi_dir, output_dir, num_workers, config, search_pattern,
                 wsi_id_mapping_style, force):
     """Execute HistoQC on the specified dataset to save mask and generate a CSV with raw WSI paths."""
-    input_dir = Path(input_dir)
+    raw_wsi_dir = Path(raw_wsi_dir)
     output_dir = Path(output_dir)
     run_histoqc_task(
-        input_dir,
+        raw_wsi_dir,
         output_dir,
         config,
         num_workers=num_workers,
@@ -87,7 +98,7 @@ def run_histoqc(input_dir, output_dir, num_workers, config, search_pattern,
     output_csv = output_dir / "raw_wsi_path.csv"
 
     write_wsi_paths_to_csv(
-        input_dir,
+        raw_wsi_dir,
         output_dir,
         output_csv,
         wsi_id_mapping_style,
@@ -95,8 +106,8 @@ def run_histoqc(input_dir, output_dir, num_workers, config, search_pattern,
 
 
 @cli.command()
-@click.argument(
-    "input_dir",
+@click.option(
+    "--masks-dir",
     type=click.Path(exists=True),
 )
 @click.option(
@@ -106,12 +117,18 @@ def run_histoqc(input_dir, output_dir, num_workers, config, search_pattern,
     show_default=True,
     help="Identifier mapping style used for renaming mask folders.",
 )
-def rename_masks(input_dir, wsi_id_mapping_style):
+def rename_masks(masks_dir, wsi_id_mapping_style):
     """Rename mask directories based on the provided WSI identifier mapping style."""
-    rename_masks_task(input_dir, wsi_id_mapping_style)
+    rename_masks_task(masks_dir, wsi_id_mapping_style)
 
 
 @cli.command()
+@click.option(
+    "--raw-wsi-dir",
+    type=click.Path(exists=True),
+    required=True,
+    help="Directory containing the raw WSI files.",
+)
 @click.option(
     "--masks-dir",
     required=True,
@@ -165,7 +182,15 @@ def rename_masks(input_dir, wsi_id_mapping_style):
     default=True,
     help="Save generated mask tiles.",
 )
+@click.option(
+    "--wsi-id-mapping-style",
+    type=click.STRING,
+    default="TCGA",
+    show_default=True,
+    help="Identifier mapping style used for renaming mask folders.",
+)
 def tile_wsi(
+    raw_wsi_dir,
     masks_dir,
     output_dir,
     tile_size,
@@ -174,9 +199,11 @@ def tile_wsi(
     num_workers,
     save_overlay,
     save_masks,
+    wsi_id_mapping_style,
 ):
     """Generate tiles from whole slide images (WSIs) using HistoQC mask outputs."""
     tile_wsi_task(
+        raw_wsi_dir,
         masks_dir,
         output_dir,
         tile_size=tile_size,
@@ -186,17 +213,25 @@ def tile_wsi(
         save_tile_overlay=save_overlay,
         save_masks=save_masks,
         magnification=magnification,
+        wsi_id_mapping_style=wsi_id_mapping_style,
     )
 
 
 @cli.command()
-@click.argument(
-    "input_dir",
+@click.option(
+    "--tiles-dir",
     type=click.Path(exists=True),
 )
-def write_tiles_metadata(input_dir):
+@click.option(
+    "--output-json",
+    type=click.Path(),
+    required=True,
+    callback=validate_is_json,
+    help="Destination JSON file path for saving the tiles path mapping.",
+)
+def write_tiles_metadata(tiles_dir, output_json):
     """Generate metadata for the tiles present in the specified dataset directory."""
-    write_tiles_metadata_task(input_dir)
+    write_tiles_metadata_task(tiles_dir, output_json)
 
 
 @cli.command()
@@ -438,15 +473,6 @@ def tile_wsi_from_superpixel_random_overlap(
     )
 
 
-def validate_is_json(ctx, param, value):
-    allowed_extensions = {".json"}  # Adjust as needed
-    if value and not value.lower().endswith(tuple(allowed_extensions)):
-        raise click.BadParameter(
-            f"File must have one of the following extensions: {', '.join(allowed_extensions)}"
-        )
-    return value
-
-
 @cli.command()
 @click.option(
     "--tiles-dir",
@@ -455,12 +481,12 @@ def validate_is_json(ctx, param, value):
     help="Directory containing tile images.",
 )
 @click.option(
-    "--output-file",
+    "--output-json",
     type=click.Path(),
     required=True,
     callback=validate_is_json,
     help=
-    "Destination JSON file path for saving the superpixel-to-tile mapping.",
+    "Destination JSON file path for saving the tiles path mapping as well as superpixels metadata.",
 )
 @click.option(
     "--num-workers",
@@ -468,10 +494,10 @@ def validate_is_json(ctx, param, value):
     show_default=True,
     help="Number of parallel worker processes.",
 )
-def create_superpixel_tile_mapping(tiles_dir, output_file, num_workers):
+def create_superpixel_tile_mapping(tiles_dir, output_json, num_workers):
     """Create a mapping between superpixels and their corresponding tiles and save it as a JSON file."""
     create_superpixel_tile_mapping_task(tiles_dir,
-                                        output_file,
+                                        output_json,
                                         num_workers=num_workers)
 
 

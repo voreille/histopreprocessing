@@ -6,6 +6,7 @@ import tempfile
 import pandas as pd
 
 from histopreprocessing.wsi_id_mapping import WSI_ID_MAPPING_DICT
+from .utils import ACCEPTED_OPENSLIDE_EXTENSIONS
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -139,11 +140,6 @@ def rename_masks_with_copy(masks_dir, renaming_function):
     logger.info(f"Moved renamed content to {masks_dir}")
 
 
-OPENS_SLIDE_EXTENSIONS = {
-    ".svs", ".tiff", ".vms", ".vmu", ".ndpi", ".scn", ".mrxs", ".tif"
-}
-
-
 def write_wsi_paths_to_csv(
     raw_data_dir: str,
     masks_dir: str,
@@ -165,8 +161,8 @@ def write_wsi_paths_to_csv(
     # Map WSI IDs to their paths
     path_to_wsi_id = {
         rename_func(f.name): f
-        for f in raw_data_dir.rglob("*") if f.is_file()
-        and f.suffix.lower() in OPENS_SLIDE_EXTENSIONS  # Filter by extension
+        for f in raw_data_dir.rglob("*") if f.is_file() and f.suffix.lower() in
+        ACCEPTED_OPENSLIDE_EXTENSIONS  # Filter by extension
         and rename_func(f.name) in wsi_ids
     }
 

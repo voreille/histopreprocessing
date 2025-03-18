@@ -3,6 +3,12 @@ from pathlib import Path
 
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
+# Accepted OpenSlide file extensions (case-insensitive).
+ACCEPTED_OPENSLIDE_EXTENSIONS = {
+    ".svs", ".tif", ".tiff", ".ndpi", ".scn", ".mrxs", ".vms", ".vmu",
+    ".svslide", ".isyntax"
+}
+
 
 def configure_logging(log_file=None):
     """Configure logging to print to stdout and optionally save to a file."""
@@ -34,5 +40,38 @@ def configure_logging(log_file=None):
     logger.info("Logging initialized.")
 
 
-def get_raw_files_from_masks(raw_data_dir, masks_path):
-    pass
+def build_wsi_index(raw_data_dir: Path,
+                    filename_to_wsi_id: callable,
+                    wsi_extension: str = "all"):
+    """Build an index mapping WSI IDs to file paths using filtered extensions."""
+    if wsi_extension == "all":
+        accepted_extensions = ACCEPTED_OPENSLIDE_EXTENSIONS
+    else:
+        accepted_extensions = {wsi_extension}
+    index = {}
+    for path in raw_data_dir.rglob("*"):
+        if path.suffix.lower() in accepted_extensions:
+            # Assume the file stem (without extension) is the WSI id.
+            wsi_id = filename_to_wsi_id(path.stem)
+            if wsi_id in index:
+                raise ValueError(f"Duplicate WSI id found for {wsi_id}")
+            index[wsi_id] = path
+    return index
+
+
+def map_masks_to_wsi(masks_list,
+                     raw_data_dir: Path,
+                     filename_to_wsi_id: callable,
+                     wsi_extension: str = "all"):
+    """Map each mask file to its corresponding WSI file based on the WSI id."""
+    index = build_wsi_index(raw_data_dir,
+                            filename_to_wsi_id,
+                            wsi_extension=wsi_extension)
+    mapping = {}
+    for mask_path in masks_list:
+        # Remove the known suffix to extract the wsi id.
+        wsi_id = filename_to_wsi_id(mask_path.name)
+        if wsi_id not in index:
+            raise ValueError(f"No matching file for wsi_id: {wsi_id}")
+        mapping[mask_path] = index[wsi_id]
+    return mapping
