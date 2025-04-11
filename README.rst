@@ -74,7 +74,7 @@ Command Usages
 
 Below are usage examples for each command as configured in the launch.json:
 
-1. **Debug run_histoqc**
+1. **run_histoqc**
 
    This command executes HistoQC on raw WSIs. It processes images found in the raw WSI directory and outputs mask files to the specified output directory.
    
@@ -87,7 +87,7 @@ Below are usage examples for each command as configured in the launch.json:
          --output-dir data/masks_test \
          --num-workers 4
 
-2. **Debug rename_masks**
+2. **rename_masks**
 
    This command renames mask directories based on the provided WSI identifier mapping style.
    
@@ -99,7 +99,7 @@ Below are usage examples for each command as configured in the launch.json:
          --masks-dir data/masks_test \
          --wsi-id-mapping-style TCGA
 
-3. **Debug tile_wsi**
+3. **tile_wsi**
 
    This command generates tiles from WSIs using the HistoQC mask outputs. You can adjust tile size, coverage threshold, and the number of worker processes.
    
@@ -115,7 +115,7 @@ Below are usage examples for each command as configured in the launch.json:
          --threshold 0.5 \
          --num-workers 4
 
-4. **Debug write_metadata**
+4. **write_metadata**
 
    This command generates metadata for the tiles and writes the output to a JSON file.
    
@@ -127,7 +127,7 @@ Below are usage examples for each command as configured in the launch.json:
          --tiles-dir data/tile_test \
          --output-json data/tile_test/metadata.json
 
-5. **Debug superpixel_segmentation**
+5. **superpixel_segmentation**
 
    This command performs superpixel segmentation on the WSIs using the corresponding mask images and saves the results to the specified output directory.
    
@@ -141,7 +141,7 @@ Below are usage examples for each command as configured in the launch.json:
          --output-dir data/superpixel_test \
          --num-workers 12
 
-6. **Debug tile_wsi_from_superpixel_no_overlap**
+6. **tile_wsi_from_superpixel_no_overlap**
 
    This command generates non-overlapping tiles from WSIs using outputs from a superpixel segmentation. It requires directories for raw WSIs and superpixel results, and an output directory for the tiles.
    
@@ -155,7 +155,7 @@ Below are usage examples for each command as configured in the launch.json:
          --output-dir data/superpixel_tiling_no_test \
          --num-workers 12
 
-7. **Debug tile_wsi_from_superpixel_random_overlap**
+7. **tile_wsi_from_superpixel_random_overlap**
 
    This command generates tiles using a random overlap method based on superpixel segmentation outputs. It allows you to process WSIs with an element of randomness in tile extraction.
    
@@ -169,7 +169,7 @@ Below are usage examples for each command as configured in the launch.json:
          --output-dir data/superpixel_tiling_ro_test \
          --num-workers 12
 
-8. **Debug create_superpixel_tile_mapping**
+8. **create_superpixel_tile_mapping**
 
    This command creates a mapping between superpixels and their corresponding tiles, saving the results as a JSON file.
    
