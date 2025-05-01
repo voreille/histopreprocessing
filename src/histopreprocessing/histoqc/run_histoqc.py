@@ -8,7 +8,7 @@ import shutil
 
 import yaml
 
-from histopreprocessing.wsi_id_mapping import WSI_ID_MAPPING_DICT
+from histopreprocessing.datasets.wsi_id_mapping import WSI_ID_MAPPING_DICT
 from .config_loader import load_histoqc_config
 
 logger = logging.getLogger(__name__)

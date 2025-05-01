@@ -5,8 +5,8 @@ import tempfile
 
 import pandas as pd
 
-from histopreprocessing.wsi_id_mapping import WSI_ID_MAPPING_DICT
-from .utils import ACCEPTED_OPENSLIDE_EXTENSIONS
+from histopreprocessing.datasets.wsi_id_mapping import WSI_ID_MAPPING_DICT
+from ..utils.utils import ACCEPTED_OPENSLIDE_EXTENSIONS
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

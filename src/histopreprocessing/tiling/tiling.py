@@ -2,12 +2,11 @@ import logging
 from pathlib import Path
 from multiprocessing.pool import ThreadPool, Pool
 
-import pandas as pd
 from tqdm import tqdm
 
-from histopreprocessing.wsi_id_mapping import WSI_ID_MAPPING_DICT
+from histopreprocessing.datasets.wsi_id_mapping import WSI_ID_MAPPING_DICT
 from .wsi_tiler import WSITilerWithMask
-from ..utils import map_masks_to_wsi
+from ..utils.utils import map_masks_to_wsi
 
 logger = logging.getLogger(__name__)
 
@@ -42,15 +41,19 @@ def process_wsi(
         if num_workers_tiles > 1:
             with ThreadPool(processes=num_workers_tiles) as pool:
                 results = list(
-                    tqdm(pool.imap_unordered(tile_processor, coordinates),
-                         total=len(coordinates),
-                         desc="Processing tiles"))
+                    tqdm(
+                        pool.imap_unordered(tile_processor, coordinates),
+                        total=len(coordinates),
+                        desc="Processing tiles",
+                    )
+                )
         else:
             results = [tile_processor(coord) for coord in tqdm(coordinates)]
 
         if any(isinstance(res, Exception) for res in results):
             raise RuntimeError(
-                f"Error encountered in tile processing for {wsi_path.name}")
+                f"Error encountered in tile processing for {wsi_path.name}"
+            )
 
         logger.info(f"Tiling completed for WSI {wsi_path.name}")
 
@@ -91,13 +94,14 @@ def tile_wsi_task(
 
     test_mask_name = mask_files[0].name.removesuffix(".svs_mask_use.png")
     if test_mask_name != filename_to_wsi_id(mask_files[0].name):
-        raise ValueError(f"The masks in {masks_dir} were not renamed "
-                         "you must run the command histopreprocessing "
-                         "rename-masks on that folder.")
+        raise ValueError(
+            f"The masks in {masks_dir} were not renamed "
+            "you must run the command histopreprocessing "
+            "rename-masks on that folder."
+        )
 
     logger.info("Searching for matching WSI path")
-    wsi_paths_mapping = map_masks_to_wsi(mask_files, raw_wsi_dir,
-                                         filename_to_wsi_id)
+    wsi_paths_mapping = map_masks_to_wsi(mask_files, raw_wsi_dir, filename_to_wsi_id)
     logger.info("Searching for matching WSI path - DONE")
 
     # Create a list of arguments for parallel processing
@@ -112,14 +116,18 @@ def tile_wsi_task(
             num_workers_tiles,
             save_masks,  # save_mask
             save_tile_overlay,
-        ) for mask_path in mask_files
+        )
+        for mask_path in mask_files
     ]
 
     with Pool(processes=num_workers_wsi) as pool:
         results = list(
-            tqdm(pool.starmap(process_wsi, wsi_args),
-                 total=len(wsi_args),
-                 desc="Processing WSIs"))
+            tqdm(
+                pool.starmap(process_wsi, wsi_args),
+                total=len(wsi_args),
+                desc="Processing WSIs",
+            )
+        )
 
     for wsi_path, result in zip(wsi_paths_mapping.values(), results):
         if not result:

@@ -8,9 +8,9 @@ from openslide import OpenSlide
 from PIL import Image
 from tqdm import tqdm
 
-from histopreprocessing.wsi_id_mapping import WSI_ID_MAPPING_DICT
+from histopreprocessing.datasets.wsi_id import WSI_ID_MAPPING_DICT
 
-from ..utils import map_masks_to_wsi
+from ..utils.utils import map_masks_to_wsi
 from .contours import extract_patch_coords_from_mask
 from .wsi_tiler import WSITilerWithMask
 
