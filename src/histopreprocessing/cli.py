@@ -163,10 +163,16 @@ def rename_masks(masks_dir, wsi_id_mapping_style):
     help="Magnification level for tiling.",
 )
 @click.option(
-    "--num-workers",
+    "--num-workers-tiles",
     default=1,
     show_default=True,
-    help="Number of parallel worker processes.",
+    help="Number of parallel worker processes to process tiles.",
+)
+@click.option(
+    "--num-workers-wsi",
+    default=1,
+    show_default=True,
+    help="Number of parallel worker processes to process WSIs.",
 )
 @click.option(
     "--save-overlay",
@@ -196,7 +202,8 @@ def tile_wsi(
     tile_size,
     threshold,
     magnification,
-    num_workers,
+    num_workers_tiles,
+    num_workers_wsi,
     save_overlay,
     save_masks,
     wsi_id_mapping_style,
@@ -208,8 +215,8 @@ def tile_wsi(
         output_dir,
         tile_size=tile_size,
         threshold=threshold,
-        num_workers_wsi=1,
-        num_workers_tiles=num_workers,
+        num_workers_tiles=num_workers_tiles,
+        num_workers_wsi=num_workers_wsi,
         save_tile_overlay=save_overlay,
         save_masks=save_masks,
         magnification=magnification,
