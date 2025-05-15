@@ -1,4 +1,5 @@
 import os
+import logging
 
 from dotenv import load_dotenv
 from huggingface_hub import login
@@ -9,6 +10,8 @@ import torch
 from torchvision import transforms
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 def load_model(model_name, device, apply_torch_scripting=True):
@@ -76,6 +79,19 @@ def load_model(model_name, device, apply_torch_scripting=True):
         )
         embedding_dim = 1536
         autocast_dtype = torch.bfloat16
+    elif model_name == "UNI1":
+        model = timm.create_model(
+            "hf-hub:MahmoodLab/uni",
+            pretrained=True,
+            init_values=1e-5,
+            dynamic_img_size=True,
+        )
+        preprocess = create_transform(
+            **resolve_data_config(model.pretrained_cfg, model=model)
+        )
+        embedding_dim = 1024
+        autocast_dtype = torch.bfloat16
+
     elif "prov-gigapath" == model_name:
         model = timm.create_model("hf_hub:prov-gigapath/prov-gigapath", pretrained=True)
         preprocess = transforms.Compose(
@@ -116,7 +132,7 @@ def load_model(model_name, device, apply_torch_scripting=True):
 
     if apply_torch_scripting:
         # Apply torch tracing if specified
-        print("Applying torch scripting...")
+        logger.info("Applying torch scripting...")
         scripted_model = torch.jit.script(model)
         scripted_model.to(device)
         return scripted_model, preprocess, embedding_dim, autocast_dtype

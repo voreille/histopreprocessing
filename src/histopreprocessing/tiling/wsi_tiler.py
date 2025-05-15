@@ -275,6 +275,8 @@ class WSITilerWithMask:
             "y_px_size_tile": self.y_px_size_level0 * self.downsample_factor,
             "x_px_size_base": self.x_px_size_level0,
             "y_px_size_base": self.y_px_size_level0,
+            "tile_size": self.tile_size,
+            "base_tile_size": self.level_tile_size / self.downsample_factor,
         }
         with open(self.output_dir / f"{self.wsi_id}__metadata.json", "w") as f:
             json.dump(metadata, f, indent=4)

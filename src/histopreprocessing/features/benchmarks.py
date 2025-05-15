@@ -71,13 +71,11 @@ def compute_embeddings_from_raw_wsi_dir(
     for batch_idx, (batch_images, _) in enumerate(
         tqdm(dataloader, desc="Processing Tiles", unit="batch")
     ):
-        batch_images = batch_images.to(device, non_blocking=True)
-
-        with torch.autocast(device_type="cuda", dtype=autocast_dtype):
-            with torch.inference_mode():
-                batch_embeddings = model(batch_images).detach().cpu().numpy()
-
-        embeddings.extend(list(batch_embeddings))
+        with torch.inference_mode():
+            batch_images = batch_images.to(device, non_blocking=True)
+            # with torch.autocast(device_type="cuda", dtype=autocast_dtype):
+            batch_embeddings = model(batch_images).detach().cpu().numpy()
+            embeddings.extend(list(batch_embeddings))
 
     embeddings = np.vstack(embeddings)
     return embeddings
@@ -117,13 +115,11 @@ def compute_embeddings(
     for batch_idx, (batch_images, _) in enumerate(
         tqdm(dataloader, desc="Processing Tiles", unit="batch")
     ):
-        batch_images = batch_images.to(device, non_blocking=True)
-
-        with torch.autocast(device_type="cuda", dtype=autocast_dtype):
-            with torch.inference_mode():
-                batch_embeddings = model(batch_images).detach().cpu().numpy()
-
-        embeddings.extend(list(batch_embeddings))
+        # with torch.autocast(device_type="cuda", dtype=autocast_dtype):
+        with torch.inference_mode():
+            batch_images = batch_images.to(device, non_blocking=True)
+            batch_embeddings = model(batch_images).detach().cpu().numpy()
+            embeddings.extend(list(batch_embeddings))
 
     embeddings = np.vstack(embeddings)
     return embeddings
@@ -145,21 +141,24 @@ def get_tile_coordinates(tile_dir):
 def main():
     """Precompute and store WSI embeddings in a single HDF5 file."""
     # Load metadata
-    model_name = "dummy"
+    model_name = "UNI2"
     gpu_id = 0
-    batch_size = 256
-    num_workers = 28
+    batch_size = 512
+    num_workers = 8
+    apply_scripting = True
 
     # Load Model
     device = get_device(gpu_id)
 
-    model, preprocess, _, autocast_dtype = load_model(model_name, device)
+    model, preprocess, _, autocast_dtype = load_model(
+        model_name, device, apply_torch_scripting=apply_scripting
+    )
 
     tiles_wsi_dir = Path(
-        "/mnt/nas7/data/Personal/Valentin/histopath/tiles_20x/cptac_luad/C3N-00580-24"
-        # "/home/valentin/workspaces/histopreprocessing/data/tile_dir/C3N-00580-24"
+        # "/mnt/nas7/data/Personal/Valentin/histopath/tiles_20x/cptac_luad/C3N-00580-24"
+        "/home/valentin/workspaces/histopreprocessing/data/tile_dir/C3N-00580-24"
     )
-    raw_wsi_path = Path("/mnt/nas6/data/CPTAC/CPTAC-LUAD_v12/LUAD/C3N-00580-24.svs")
+    raw_wsi_path = Path("/home/valentin/workspaces/histopreprocessing/data/raw_wsi/C3N-00580-24.svs")
 
     print("Running benchmark using parameters:")
     print(f"Model name: {model_name}")
@@ -181,25 +180,25 @@ def main():
 
     # Compute embeddings
 
-    t1_start = perf_counter()
-    embeddings = compute_embeddings_from_raw_wsi_dir(
-        raw_wsi_path,
-        coordinates,
-        model,
-        preprocess=preprocess,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        autocast_dtype=autocast_dtype,
-        tile_size=224,  # Hardcoded
-        tile_level=0,
-        device=device,
-    )
-    t1_stop = perf_counter()
-    print(
-        "Elapsed time computing embeddings from tiles from OpenSlide raw WSI",
-        t1_stop - t1_start,
-    )
-    print(f"embeddings shape: {embeddings.shape}")
+    # t1_start = perf_counter()
+    # embeddings = compute_embeddings_from_raw_wsi_dir(
+    #     raw_wsi_path,
+    #     coordinates,
+    #     model,
+    #     preprocess=preprocess,
+    #     batch_size=batch_size,
+    #     num_workers=num_workers,
+    #     autocast_dtype=autocast_dtype,
+    #     tile_size=224,  # Hardcoded
+    #     tile_level=0,
+    #     device=device,
+    # )
+    # t1_stop = perf_counter()
+    # print(
+    #     "Elapsed time computing embeddings from tiles from OpenSlide raw WSI",
+    #     t1_stop - t1_start,
+    # )
+    # print(f"embeddings shape: {embeddings.shape}")
 
     t1_start = perf_counter()
     embeddings = compute_embeddings(

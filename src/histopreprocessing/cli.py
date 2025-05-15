@@ -2,7 +2,11 @@ import click
 from pathlib import Path
 
 from histopreprocessing.histoqc import run_histoqc_task
-from histopreprocessing.datasets.rename_masks import rename_masks_task, write_wsi_paths_to_csv
+from histopreprocessing.features.compute_embeddings import main as compute_embeddings
+from histopreprocessing.datasets.rename_masks import (
+    rename_masks_task,
+    write_wsi_paths_to_csv,
+)
 from histopreprocessing.tiling import (
     tile_wsi_task,
     tile_wsi_superpixel_task_random_overlap,
@@ -14,6 +18,7 @@ from histopreprocessing.superpixels.superpixels import superpixel_segmentation_t
 from histopreprocessing.superpixels.superpixel_mapping import (
     create_superpixel_tile_mapping_task,
 )
+
 
 project_dir = Path(__file__).parents[2].resolve()
 
@@ -34,6 +39,9 @@ def validate_is_json(ctx, param, value):
 def cli(log_file):
     """Command-line interface for executing histopathology pre-processing tasks."""
     configure_logging(log_file=log_file)
+
+
+cli.add_command(compute_embeddings, name="compute-embeddings")
 
 
 @cli.command()
