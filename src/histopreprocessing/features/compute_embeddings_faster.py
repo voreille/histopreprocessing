@@ -4,6 +4,8 @@ import json
 import os
 from pathlib import Path
 import logging
+from time import perf_counter
+
 
 import click
 import h5py
@@ -41,7 +43,7 @@ def compute_and_store_embeddings(
     num_workers=None,
     output_dir=None,
     autocast_dtype=None,
-    save_each_n_batches=1,
+    save_every_n_batches=1,
 ):
     """Compute embeddings dynamically based on model type and save temp checkpoints."""
 
@@ -75,13 +77,16 @@ def compute_and_store_embeddings(
             else:
                 batch_embeddings = model(batch_images).cpu().numpy().astype(np.float32)
 
-            batch_tilepaths = batch_tilepaths.cpu().numpy().astype(np.int32)
-            if save_each_n_batches > 0 and batch_idx % save_each_n_batches == 0:
+            if save_every_n_batches > 0 and batch_idx % save_every_n_batches == 0:
+                time_start = perf_counter()
                 save_embeddings(
                     output_dir,
                     batch_embeddings,
                     batch_tilepaths,
                     model_name=model_name,
+                )
+                logger.info(
+                    f"Saved embeddings for batch {batch_idx} in {perf_counter() - time_start:.2f} seconds"
                 )
 
 
@@ -96,7 +101,12 @@ def get_coordinates_from_tile_path(tile_path):
     return x_coord, y_coord
 
 
-def save_embeddings(output_dir, batch_embeddings, batch_tilepaths, model_name):
+def save_embeddings(
+    output_dir,
+    batch_embeddings,
+    batch_tilepaths,
+    model_name,
+):
     """Save embeddings to HDF5 file."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -105,7 +115,7 @@ def save_embeddings(output_dir, batch_embeddings, batch_tilepaths, model_name):
 
     big_dict = {}
     for idx, tile_path in enumerate(batch_tilepaths):
-        wsi_id = str(tile_path.parents[2].stem)
+        wsi_id = str(tile_path.parents[1].stem)
         if wsi_id not in big_dict:
             big_dict[wsi_id] = {"embeddings": [], "coordinates": [], "tilepaths": []}
         big_dict[wsi_id]["embeddings"].append(batch_embeddings[idx, :])
@@ -135,6 +145,14 @@ def save_embeddings(output_dir, batch_embeddings, batch_tilepaths, model_name):
                     "description": "Model name used for embedding computation",
                     "value": model_name,
                 },
+                "total_tiles": {
+                    "description": "Total number of tiles",
+                    "value": len(list((tile_dir / "tiles").glob("*.png"))),
+                },
+                "current_number_tiles": {
+                    "description": "Current number of saved tiles, used for resuming",
+                    "value": 0,
+                },
             }
             attr_dict.update(tiles_metadata)
         else:
@@ -143,10 +161,25 @@ def save_embeddings(output_dir, batch_embeddings, batch_tilepaths, model_name):
 
         save_hdf5(
             hdf5_path,
-            asset_dict,
+            {
+                "embeddings": np.array(asset_dict["embeddings"]),
+                "coordinates": np.array(asset_dict["coordinates"]),
+            },
             global_attr_dict=attr_dict,
             mode=mode,
         )
+        update_hdf5_completion(hdf5_path)
+
+
+def update_hdf5_completion(hdf5_path):
+    with h5py.File(hdf5_path, "a") as f:
+        total = f.attrs.get("total_tiles", None)
+        current = f["embeddings"].shape[0]
+        f.attrs["current_number_tiles"] = current
+        if total is not None and current == total:
+            f.attrs["is_complete"] = True
+        else:
+            f.attrs["is_complete"] = False
 
 
 def save_hdf5(output_path, asset_dict, global_attr_dict=None, mode="a"):
@@ -224,12 +257,7 @@ def save_hdf5(output_path, asset_dict, global_attr_dict=None, mode="a"):
     default=False,
     help="Enable mixed precision inference using autocast",
 )
-@click.option(
-    "--force",
-    is_flag=True,
-    default=False,
-    help="Enable mixed precision inference using autocast",
-)
+@click.option("--save-every-n-batches", default=1, help="Save every n batches")
 def main(
     model_name,
     tile_paths_json,
@@ -238,7 +266,7 @@ def main(
     batch_size,
     num_workers,
     use_autocast,
-    force,
+    save_every_n_batches,
 ):
     # Load Model
     device = get_device(gpu_id)
@@ -252,8 +280,6 @@ def main(
     with open(tile_paths_json, "r") as f:
         tile_paths = json.load(f)
 
-
-
     compute_and_store_embeddings(
         tile_paths,
         model,
@@ -261,8 +287,9 @@ def main(
         preprocess=preprocess,
         batch_size=batch_size,
         num_workers=num_workers,
-        output_filepath=output_dir,
+        output_dir=output_dir,
         autocast_dtype=autocast_dtype,
+        save_every_n_batches=save_every_n_batches
     )
 
 
