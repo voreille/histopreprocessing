@@ -1,3 +1,4 @@
+import numpy as np
 import pyspng
 import torch
 from openslide import OpenSlide
@@ -16,10 +17,11 @@ class TileDataset(Dataset):
         Tile-level dataset that returns individual tile images from a list of paths.
 
         Args:
-            tile_paths (list): List of paths to tile images for a WSI.
-            augmentation (callable, optional): augmentation to apply to each tile image.
-            transform (callable, optional): Transform to apply to each tile image.
+            tile_paths (list or np.ndarray): List or array of paths to tile images for a WSI.
+            preprocess (callable, optional): Preprocessing to apply to each tile image.
         """
+        if not isinstance(tile_paths, np.ndarray):
+            tile_paths = np.array(tile_paths, dtype=str)
         self.tile_paths = tile_paths
         self.preprocess = preprocess
 
