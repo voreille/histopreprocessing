@@ -22,6 +22,12 @@ Preprocessing CLIs for WSIs
 * Free software: MIT license
 * Documentation: https://histopreprocessing.readthedocs.io.
 
+TODO
+--------
+- [ ] Make the different tiling methods DRYer
+- [ ] Implement unit tests especally for the basic functions, hope basic tiling still works since I Changed the map_masks_to_wsi function
+- [ ] Don't bother with renaming slides IDs
+
 
 Features
 --------
@@ -113,7 +119,8 @@ Below are usage examples for each command as configured in the launch.json:
          --output-dir data/tile_test \
          --tile-size 224 \
          --threshold 0.5 \
-         --num-workers 4
+         --num-workers-tiles 4 \
+         --num-workers-wsi 4 
 
 4. **write_metadata**
 
@@ -153,7 +160,8 @@ Below are usage examples for each command as configured in the launch.json:
          --raw-wsi-dir data/tcga_test \
          --superpixel-dir data/superpixel_test \
          --output-dir data/superpixel_tiling_no_test \
-         --num-workers 12
+         --num-workers-tiles 4 \
+         --num-workers-wsi 4 
 
 7. **tile_wsi_from_superpixel_random_overlap**
 
@@ -167,7 +175,8 @@ Below are usage examples for each command as configured in the launch.json:
          --raw-wsi-dir data/tcga_test \
          --superpixel-dir data/superpixel_test \
          --output-dir data/superpixel_tiling_ro_test \
-         --num-workers 12
+         --num-workers-tiles 4 \
+         --num-workers-wsi 4 
 
 8. **create_superpixel_tile_mapping**
 

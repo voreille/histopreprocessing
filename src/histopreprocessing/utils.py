@@ -70,7 +70,7 @@ def map_masks_to_wsi(masks_list,
     mapping = {}
     for mask_path in masks_list:
         # Remove the known suffix to extract the wsi id.
-        wsi_id = filename_to_wsi_id(mask_path.name)
+        wsi_id = filename_to_wsi_id(mask_path.stem)
         if wsi_id not in index:
             raise ValueError(f"No matching file for wsi_id: {wsi_id}")
         mapping[mask_path] = index[wsi_id]
