@@ -66,6 +66,8 @@ def compute_and_store_embeddings(
 
     print(f"starting processing tiles with num_workers={num_workers}")
 
+    all_embeddings = []
+    all_tilepaths = []
     for batch_idx, (batch_images, batch_tilepaths) in enumerate(tqdm(dataloader)):
         with torch.inference_mode():
             batch_images = batch_images.to(device, non_blocking=True)
@@ -77,17 +79,21 @@ def compute_and_store_embeddings(
             else:
                 batch_embeddings = model(batch_images).cpu().numpy().astype(np.float32)
 
-            if save_every_n_batches > 0 and batch_idx % save_every_n_batches == 0:
-                time_start = perf_counter()
-                save_embeddings(
-                    output_dir,
-                    batch_embeddings,
-                    batch_tilepaths,
-                    model_name=model_name,
-                )
-                logger.info(
-                    f"Saved embeddings for batch {batch_idx} in {perf_counter() - time_start:.2f} seconds"
-                )
+        all_embeddings.append(batch_embeddings)
+        all_tilepaths.extend(batch_tilepaths)
+        if save_every_n_batches > 0 and batch_idx % save_every_n_batches == 0:
+            time_start = perf_counter()
+            save_embeddings(
+                output_dir,
+                batch_embeddings,
+                batch_tilepaths,
+                model_name=model_name,
+            )
+            logger.info(
+                f"Saved embeddings for batch {batch_idx} in {perf_counter() - time_start:.2f} seconds"
+            )
+            all_embeddings = []
+            all_tilepaths = []
 
 
 def get_coordinates_from_tile_path(tile_path):
@@ -289,7 +295,7 @@ def main(
         num_workers=num_workers,
         output_dir=output_dir,
         autocast_dtype=autocast_dtype,
-        save_every_n_batches=save_every_n_batches
+        save_every_n_batches=save_every_n_batches,
     )
 
 
