@@ -79,7 +79,7 @@ def tile_wsi_task(
     save_tile_overlay=False,
     save_masks=False,
     magnification=10,
-    wsi_id_mapping_style="TCGA",
+    wsi_id_mapping_style="none",
 ):
     raw_wsi_dir = Path(raw_wsi_dir)
     masks_dir = Path(masks_dir)
@@ -92,8 +92,8 @@ def tile_wsi_task(
     if len(mask_files) == 0:
         raise ValueError(f"No HistoQC masks found in {masks_dir}")
 
-    test_mask_name = mask_files[0].name.removesuffix(".svs_mask_use.png")
-    if test_mask_name != filename_to_wsi_id(mask_files[0].name):
+    test_mask_name = ".".join(mask_files[0].name.split(".")[:-2])
+    if test_mask_name != filename_to_wsi_id(test_mask_name):
         raise ValueError(
             f"The masks in {masks_dir} were not renamed "
             "you must run the command histopreprocessing "

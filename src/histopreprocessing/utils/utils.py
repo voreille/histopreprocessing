@@ -5,8 +5,16 @@ LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 # Accepted OpenSlide file extensions (case-insensitive).
 ACCEPTED_OPENSLIDE_EXTENSIONS = {
-    ".svs", ".tif", ".tiff", ".ndpi", ".scn", ".mrxs", ".vms", ".vmu",
-    ".svslide", ".isyntax"
+    ".svs",
+    ".tif",
+    ".tiff",
+    ".ndpi",
+    ".scn",
+    ".mrxs",
+    ".vms",
+    ".vmu",
+    ".svslide",
+    ".isyntax",
 }
 
 
@@ -29,8 +37,9 @@ def configure_logging(log_file=None):
     # Optional: Log to file if specified
     if log_file:
         log_file_path = Path(log_file).resolve()
-        log_file_path.parent.mkdir(parents=True,
-                                   exist_ok=True)  # Ensure directory exists
+        log_file_path.parent.mkdir(
+            parents=True, exist_ok=True
+        )  # Ensure directory exists
         file_handler = logging.FileHandler(log_file_path)
         file_handler.setLevel(logging.INFO)
         file_formatter = logging.Formatter(LOG_FORMAT)
@@ -40,9 +49,9 @@ def configure_logging(log_file=None):
     logger.info("Logging initialized.")
 
 
-def build_wsi_index(raw_data_dir: Path,
-                    filename_to_wsi_id: callable,
-                    wsi_extension: str = "all"):
+def build_wsi_index(
+    raw_data_dir: Path, filename_to_wsi_id: callable, wsi_extension: str = "all"
+):
     """Build an index mapping WSI IDs to file paths using filtered extensions."""
     if wsi_extension == "all":
         accepted_extensions = ACCEPTED_OPENSLIDE_EXTENSIONS
@@ -59,18 +68,22 @@ def build_wsi_index(raw_data_dir: Path,
     return index
 
 
-def map_masks_to_wsi(masks_list,
-                     raw_data_dir: Path,
-                     filename_to_wsi_id: callable,
-                     wsi_extension: str = "all"):
+def map_masks_to_wsi(
+    masks_list,
+    raw_data_dir: Path,
+    filename_to_wsi_id: callable,
+    wsi_extension: str = "all",
+):
     """Map each mask file to its corresponding WSI file based on the WSI id."""
-    index = build_wsi_index(raw_data_dir,
-                            filename_to_wsi_id,
-                            wsi_extension=wsi_extension)
+    index = build_wsi_index(
+        raw_data_dir, filename_to_wsi_id, wsi_extension=wsi_extension
+    )
     mapping = {}
     for mask_path in masks_list:
         # Remove the known suffix to extract the wsi id.
-        wsi_id = filename_to_wsi_id(mask_path.name)
+        # Assuming mask files are named like "wsi_id.ext_mask_use.png" as per HistoQC convention.
+        wsi_id = ".".join(mask_path.name.split(".")[:-2])
+        wsi_id = filename_to_wsi_id(wsi_id)
         if wsi_id not in index:
             raise ValueError(f"No matching file for wsi_id: {wsi_id}")
         mapping[mask_path] = index[wsi_id]

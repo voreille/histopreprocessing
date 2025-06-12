@@ -81,7 +81,7 @@ cli.add_command(compute_embeddings, name="compute-embeddings")
 @click.option(
     "--wsi-id-mapping-style",
     type=click.STRING,
-    default="TCGA",
+    default="none",
     show_default=True,
     help="Identifier mapping style for WSIs."
     "For now the only possibilites or TCGA or CPTAC.",
@@ -132,7 +132,7 @@ def run_histoqc(
 @click.option(
     "--wsi-id-mapping-style",
     type=click.STRING,
-    default="TCGA",
+    default="none",
     show_default=True,
     help="Identifier mapping style used for renaming mask folders.",
 )
@@ -210,7 +210,7 @@ def rename_masks(masks_dir, wsi_id_mapping_style):
 @click.option(
     "--wsi-id-mapping-style",
     type=click.STRING,
-    default="TCGA",
+    default="none",
     show_default=True,
     help="Identifier mapping style used for renaming mask folders.",
 )
