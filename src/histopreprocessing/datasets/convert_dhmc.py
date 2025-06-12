@@ -3,6 +3,7 @@ from pathlib import Path
 import click
 import pandas as pd
 import tifftools
+from tqdm import tqdm
 
 
 @click.command()
@@ -21,14 +22,21 @@ def update_tiff_tags(csv_path, input_dir, output_dir, force):
     - INPUT_DIR: Directory containing original .tif files.
     - OUTPUT_DIR: Directory to save the updated .tif files.
     """
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(csv_path).set_index("File Name")
+    files = list(Path(input_dir).glob("*.tif"))
+    click.echo(f"Found {len(files)} TIFF files in input directory: {input_dir}")
+
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for _, row in df.iterrows():
-        file_name = row["File Name"]
-        appmag = int(row["Magnification"])
-        mpp = float(row["Microns Per Pixel"])
+    for file in tqdm(files, desc="Processing TIFF files"):
+        file_name = file.name
+        if file_name not in df.index:
+            click.echo(f"Warning: {file_name} not found in CSV. Skipping.")
+            continue
+
+        appmag = int(df.at[file_name, "Magnification"])
+        mpp = float(df.at[file_name, "Microns Per Pixel"])
 
         image_description = f"Aperio Fake |AppMag = {appmag}|MPP = {mpp}"
         in_path = Path(input_dir) / file_name
